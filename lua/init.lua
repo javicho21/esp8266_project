@@ -11,6 +11,12 @@ if (gpio.read(abort_pin) ~= 1) then
     mytimer:start()
 else
     print("\n Proceeding with startup!")
+
+    print("\n Preparing ADC...")
+    if adc.force_init_mode(adc.INIT_ADC) then
+    node.restart()
+    end
+    
 	print("\n Running wifi-config.lua!")
     dofile("wifi-config.lua")
 end

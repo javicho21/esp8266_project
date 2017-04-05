@@ -44,7 +44,7 @@ nodemac = wifi.sta.getmac()
 topic = ("/nodes/"..nodemac)
 -- other variables
 send_interval = 5 --in seconds
-reset_interval = 30 --in seconds
+pres_sensor_id = 99 --id of the pressure sensor
 ------------------------------------------
 
 value_table = {}
@@ -85,14 +85,15 @@ end)
 m:connect(MQTT_BROKER, MQTT_BROKER_PORT, MQTT_BROKER_SECURE,
     function(client)
         print (tmr.now(),"mqtt connected, start reading UART...") 
-        listen_to_uart()
+        --listen_to_uart()
+        read_analog()
         local mytimer = tmr.create()
         -- oo calling
         mytimer:register(send_interval*1000, tmr.ALARM_AUTO, 
-            function (t)
-                print(tmr.now(),"timer activated, sending data to mqtt broker..."); 
-                send_to_mqtt()
-            end)
+        function (t)
+            print(tmr.now(),"timer activated, sending data to mqtt broker..."); 
+            send_to_mqtt()
+        end)
         mytimer:start()
         
     end, 
@@ -105,18 +106,21 @@ m:connect(MQTT_BROKER, MQTT_BROKER_PORT, MQTT_BROKER_SECURE,
 function send_to_mqtt()
     print("INFO: publishing available data...")
     for sensor_id, value in pairs(value_table) do
-        --print ("sendor_id = ",sensor_id, "value = ",value)
-        payload = (sensor_id..","..value..",")
-        print (payload)
-        m:publish(topic,payload,0,0, function(client) print("sent") end)
+    --print ("sendor_id = ",sensor_id, "value = ",value)
+    payload = (sensor_id..","..value..",")
+    print (payload)
+    m:publish(topic,payload,0,0, function(client) print("sent") end)
     end
-    
     print("INFO: clearing table...")
     value_table = {}
 end
 
+function read_analog()
+    value_table[pres_sensor_id] = adc.read(0)
+end
+
+--[[
 function listen_to_uart()
-    
     --create callback for uart events
     uart.on("data", "\r",
         function(data)
@@ -130,3 +134,4 @@ function listen_to_uart()
         end, 0)
     
 end
+--]]
