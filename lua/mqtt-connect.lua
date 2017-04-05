@@ -44,6 +44,8 @@ nodemac = wifi.sta.getmac()
 topic = ("/nodes/"..nodemac)
 -- other variables
 send_interval = 5 --in seconds
+reset_interval = 30 --in seconds
+adc_interval = 1 --in seconds - the rate of adc reads
 pres_sensor_id = 99 --id of the pressure sensor
 ------------------------------------------
 
@@ -57,6 +59,13 @@ reset_timer:register(reset_interval*1000, tmr.ALARM_SINGLE,
     end)
 reset_timer:start()
 
+adc_timer = tmr.create()
+adc_timer:register(adc_interval*1000, tmr.ALARM_SINGLE, 
+    function (t)           
+        print(tmr.now(),"reset timer activated! Resetting!"); 
+        read_adc()
+    end)
+adc_timer:start()
 
 --- Initiate MQTT Client ---
 m = mqtt.Client(MQTT_CLIENT_ID, MQTT_CLIENT_KEEPALIVE_TIME, MQTT_CLIENT_USER, MQTT_CLIENT_PASSWORD)
@@ -64,11 +73,11 @@ m = mqtt.Client(MQTT_CLIENT_ID, MQTT_CLIENT_KEEPALIVE_TIME, MQTT_CLIENT_USER, MQ
 --- Callback for mqtt events ---
 m:on("connect", 
     function(client) 
-        print("mqtt connected to broker")
+        print("mqtt connected to broker.")
     end)
 m:on("offline", 
     function(client) 
-        print ("mqtt client is offline, stop reading UART.") 
+        print ("mqtt client is offline.") 
         mytimer:unregister()
         uart.on("data") -- unregister callback function
     end)
@@ -84,9 +93,9 @@ end)
 -- for TLS: m:connect("192.168.11.118", secure-port, 1)
 m:connect(MQTT_BROKER, MQTT_BROKER_PORT, MQTT_BROKER_SECURE,
     function(client)
-        print (tmr.now(),"mqtt connected, start reading UART...") 
+        print (tmr.now(),"mqtt connected.") 
         --listen_to_uart()
-        read_analog()
+        
         local mytimer = tmr.create()
         -- oo calling
         mytimer:register(send_interval*1000, tmr.ALARM_AUTO, 
@@ -104,9 +113,10 @@ m:connect(MQTT_BROKER, MQTT_BROKER_PORT, MQTT_BROKER_SECURE,
 
 
 function send_to_mqtt()
+    read_adc()
     print("INFO: publishing available data...")
     for sensor_id, value in pairs(value_table) do
-    --print ("sendor_id = ",sensor_id, "value = ",value)
+    print ("sendor_id = ",sensor_id, "value = ",value)
     payload = (sensor_id..","..value..",")
     print (payload)
     m:publish(topic,payload,0,0, function(client) print("sent") end)
@@ -115,8 +125,14 @@ function send_to_mqtt()
     value_table = {}
 end
 
-function read_analog()
-    value_table[pres_sensor_id] = adc.read(0)
+function read_adc() 
+    v=0
+    i=0
+    repeat
+        v = v + adc.read(0) 
+        i=i+1
+    until i==10
+    value_table[pres_sensor_id] = v/10
 end
 
 --[[
