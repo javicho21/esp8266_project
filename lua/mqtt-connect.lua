@@ -45,7 +45,6 @@ topic = ("/nodes/"..nodemac)
 -- other variables
 send_interval = 5 --in seconds
 reset_interval = 30 --in seconds
-adc_interval = 1 --in seconds - the rate of adc reads
 pres_sensor_id = 99 --id of the pressure sensor
 ------------------------------------------
 
