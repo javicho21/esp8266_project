@@ -58,13 +58,6 @@ reset_timer:register(reset_interval*1000, tmr.ALARM_SINGLE,
     end)
 reset_timer:start()
 
-adc_timer = tmr.create()
-adc_timer:register(adc_interval*1000, tmr.ALARM_SINGLE, 
-    function (t)           
-        print(tmr.now(),"reset timer activated! Resetting!"); 
-        read_adc()
-    end)
-adc_timer:start()
 
 --- Initiate MQTT Client ---
 m = mqtt.Client(MQTT_CLIENT_ID, MQTT_CLIENT_KEEPALIVE_TIME, MQTT_CLIENT_USER, MQTT_CLIENT_PASSWORD)
@@ -124,6 +117,11 @@ function send_to_mqtt()
     value_table = {}
 end
 
+function remap_value(value,low1,high1,low2,high2)
+    value = low2 + (value - low1) * (high2 - low2) / (high1 - low1)
+    return value
+end
+
 function read_adc() 
     v=0
     i=0
@@ -131,7 +129,8 @@ function read_adc()
         v = v + adc.read(0) 
         i=i+1
     until i==10
-    value_table[pres_sensor_id] = v/10
+    v = v/10
+    value_table[pres_sensor_id] = remap_value(v,0,1024,-7,67)
 end
 
 --[[
